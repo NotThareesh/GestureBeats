@@ -6,6 +6,8 @@ import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 import multiprocessing
 import time
+from dotenv import load_dotenv
+import os
 
 # Custom labels for the model
 labels = ['R OK', 'L OK', 'R Pointer', 'L Pointer', 'Left Seek', 'Right Seek', 'Rock and Roll', 'Open Hand']
@@ -28,8 +30,10 @@ class DetectionClass:
             exit()
 
     def _initialize_spotify(self):
-        CLIENT_ID = "967fed1f6d9649aa82727bfb2d222fd8"
-        CLIENT_SECRET = "26f8ffe6bbba438abdf5bf7b85021e60"
+        load_dotenv()
+
+        CLIENT_ID = os.getenv('CLIENT_ID')
+        CLIENT_SECRET = os.getenv('CLIENT_SECRET')
         REDIRECT_URI = "https://example.com"
         
         sp_oauth = SpotifyOAuth(
