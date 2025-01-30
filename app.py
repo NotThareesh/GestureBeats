@@ -8,7 +8,7 @@ import multiprocessing
 import time
 
 # Custom labels for the model
-labels = ['R OK', 'R Pointer', 'L Pointer', 'Left Seek', 'Right Seek', 'Rock and Roll', 'Open Hand']
+labels = ['R OK', 'L OK', 'R Pointer', 'L Pointer', 'Left Seek', 'Right Seek', 'Rock and Roll', 'Open Hand']
 
 
 class DetectionClass:
@@ -61,17 +61,23 @@ class DetectionClass:
 
     def _toggle_loop(self):
         current_playback = self.sp.current_playback()
-        if not current_playback:
-            print("No active playback detected.")
-            return
-
         current_repeat_state = current_playback.get("repeat_state", "off")
+        
         if current_repeat_state == "track":
             self.sp.repeat(state="off")
-            print("Looping disabled.")
         else:
             self.sp.repeat(state="track")
-            print("Looping enabled.")
+
+
+    def _toggle_playback(self):
+        current_playback = self.sp.current_playback()
+        is_playing = current_playback.get("is_playing", False)
+
+        if is_playing:
+            self.sp.pause_playback()
+        else:
+            self.sp.start_playback()
+        
 
     def _normalize_landmarks(self, landmarks):
         base_x, base_y, base_z = landmarks[0].x, landmarks[0].y, landmarks[0].z
@@ -96,15 +102,13 @@ class DetectionClass:
             if gesture != self.last_action:
                 self.last_action = gesture
 
-                if gesture == 0:
-                    self.sp.start_playback()
-                elif gesture == 1:
-                    self.sp.pause_playback()
-                elif gesture == 3:
-                    self.sp.previous_track()
+                if gesture in (0, 1):
+                    self._toggle_playback()
                 elif gesture == 4:
-                    self.sp.next_track()
+                    self.sp.previous_track()
                 elif gesture == 5:
+                    self.sp.next_track()
+                elif gesture == 6:
                     self._toggle_loop()
 
                 time.sleep(3)
@@ -115,7 +119,7 @@ class DetectionClass:
     def _capture_video(self):
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6)
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(0)
 
         while cap.isOpened():
             ret, frame = cap.read()

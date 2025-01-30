@@ -9,13 +9,13 @@ import joblib
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.5)
 
-model = joblib.load('gesture_model.pkl')
-
 # CSV file path
 csv_file_path = 'hand_gesture_data.csv'
 
 # Initialize the count dictionary
-data_count = {i: 0 for i in range(6)}
+labels = ['R OK', 'L OK', 'R Pointer', 'L Pointer', 'Left Seek', 'Right Seek', 'Rock and Roll', 'Open Hand']
+
+data_count = {i: 0 for i in range(len(labels))}
 
 # Function to read the existing data from CSV
 def read_csv_data(file_path):
