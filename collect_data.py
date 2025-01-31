@@ -38,7 +38,7 @@ def normalize_landmarks(landmarks):
 
 existing_data = read_csv_data(csv_file_path)
 
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(1)
 
 print("Press a, b, c ..... to record gesture data with the respective label.")
 print("Press 'esc' to quit.")

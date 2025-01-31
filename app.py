@@ -99,7 +99,7 @@ class DetectionClass:
         y_pred_new = self.model.predict_proba([scaled_landmarks.tolist()])
         max_pred = y_pred_new[0][np.argmax(y_pred_new)]
 
-        if max_pred > 0.985 and np.argmax(y_pred_new) != 6:
+        if max_pred > 0.96 and np.argmax(y_pred_new) != 7:
             print("Predictions for new data: ", labels[np.argmax(y_pred_new)])
             print("Total Predictions: ", y_pred_new[0])
 
