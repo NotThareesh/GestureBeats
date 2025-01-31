@@ -17,11 +17,10 @@ class DetectionClass:
     def __init__(self):
         self.model = joblib.load('gesture_model.pkl')
         self.scaler = joblib.load('gesture_scaler.pkl')
-        self.last_action = None
-        
-        # Queue to store frames from the main thread for processing
+
+        # Queue to store frames from the main process for detection processing
         self.frame_queue = multiprocessing.Queue(maxsize=1)
-        
+
         # Initialize Spotify
         self._initialize_spotify()
 
@@ -29,33 +28,39 @@ class DetectionClass:
             print("Connect Spotify to a Device first")
             exit()
 
+        # Cooldowns when detecting gestures
+        self.last_action_time = time.time()
+
+    def _is_valid_action(self):
+        return time.time() - self.last_action_time > 3
+
     def _initialize_spotify(self):
         load_dotenv()
 
         CLIENT_ID = os.getenv('CLIENT_ID')
         CLIENT_SECRET = os.getenv('CLIENT_SECRET')
         REDIRECT_URI = "https://example.com"
-        
+
         sp_oauth = SpotifyOAuth(
             client_id=CLIENT_ID,
             client_secret=CLIENT_SECRET,
             redirect_uri=REDIRECT_URI,
             scope="user-modify-playback-state user-read-playback-state"
         )
-        
+
         token_info = sp_oauth.get_cached_token()
-        
+
         if not token_info:
             token_info = sp_oauth.get_access_token()
-        
+
         access_token = token_info['access_token']
         self.sp = spotipy.Spotify(auth=access_token)
-        
+
         print("Spotify Authenticated Successfully!")
 
     def _is_device_active(self):
         devices = self.sp.devices()
-        
+
         if devices['devices']:
             for device in devices['devices']:
                 if device['is_active']:
@@ -66,12 +71,11 @@ class DetectionClass:
     def _toggle_loop(self):
         current_playback = self.sp.current_playback()
         current_repeat_state = current_playback.get("repeat_state", "off")
-        
+
         if current_repeat_state == "track":
             self.sp.repeat(state="off")
         else:
             self.sp.repeat(state="track")
-
 
     def _toggle_playback(self):
         current_playback = self.sp.current_playback()
@@ -81,31 +85,27 @@ class DetectionClass:
             self.sp.pause_playback()
         else:
             self.sp.start_playback()
-        
 
     def _normalize_landmarks(self, landmarks):
         base_x, base_y, base_z = landmarks[0].x, landmarks[0].y, landmarks[0].z
         normalized = np.array([[lm.x - base_x, lm.y - base_y, lm.z - base_z] for lm in landmarks])
         return normalized.flatten()
-    
 
     def _scale_landmarks(self, normalized_landmarks):
         scaled_landmarks = self.scaler.transform([normalized_landmarks])
         return scaled_landmarks.flatten()
 
-
     def _process_frame(self, scaled_landmarks):
         y_pred_new = self.model.predict_proba([scaled_landmarks.tolist()])
         max_pred = y_pred_new[0][np.argmax(y_pred_new)]
-        
+
         if max_pred > 0.985 and np.argmax(y_pred_new) != 6:
             print("Predictions for new data: ", labels[np.argmax(y_pred_new)])
             print("Total Predictions: ", y_pred_new[0])
 
             gesture = np.argmax(y_pred_new)
-            if gesture != self.last_action:
-                self.last_action = gesture
 
+            if self._is_valid_action():
                 if gesture in (0, 1):
                     self._toggle_playback()
                 elif gesture == 4:
@@ -115,15 +115,12 @@ class DetectionClass:
                 elif gesture == 6:
                     self._toggle_loop()
 
-                time.sleep(3)
-
-        else:
-            print("No hands detected in the current frame.")
+                self.last_action_time = time.time()
 
     def _capture_video(self):
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6)
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(1)
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -138,17 +135,17 @@ class DetectionClass:
             if result.multi_hand_landmarks:
                 for hand_landmarks in result.multi_hand_landmarks:
                     mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
-            
+
                 if not self.frame_queue.full():
                     normalized_landmarks = self._normalize_landmarks(hand_landmarks.landmark)
                     scaled_landmarks = self._scale_landmarks(normalized_landmarks)
-                    
+
                     self.frame_queue.put(scaled_landmarks)
-            
+
             cv2.imshow('Gesture Detection', frame)
             if cv2.waitKey(1) & 0xFF == 27:  # ESC to exit
                 break
-        
+
         cap.release()
         cv2.destroyAllWindows()
 
@@ -164,6 +161,7 @@ class DetectionClass:
         processing_thread.start()
 
         self._capture_video()
+
 
 if __name__ == "__main__":
     detection = DetectionClass()
