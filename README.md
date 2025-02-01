@@ -26,7 +26,7 @@ This project implements a gesture recognition system to control Spotify playback
 ### Clone this repository:
 
 ```bash
-git clone https://github.com/NotThareesh/RIG-Inductions.git
+git clone https://github.com/NotThareesh/GestureBeats.git
 ```
 
 ### Install required packages:
