@@ -130,7 +130,7 @@ class DetectionClass:
     def _capture_video(self):
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6)
-        cap = cv2.VideoCapture(0)  # Change it to 0 or 1 depending upon your computer's camera input
+        cap = cv2.VideoCapture(1)  # Change it to 0 or 1 depending upon your computer's camera input
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -146,11 +146,22 @@ class DetectionClass:
                 for hand_landmarks in result.multi_hand_landmarks:
                     mp.solutions.drawing_utils.draw_landmarks(frame, hand_landmarks, mp_hands.HAND_CONNECTIONS)
 
-                if not self.frame_queue.full():
-                    normalized_landmarks = self._normalize_landmarks(hand_landmarks.landmark)
-                    scaled_landmarks = self._scale_landmarks(normalized_landmarks)
+                    h, w = frame.shape[:2]
+                    landmarks = [(lm.x * w, lm.y * h) for lm in hand_landmarks.landmark]
+                    x_min, y_min = np.min(landmarks, axis=0)
+                    x_max, y_max = np.max(landmarks, axis=0)
+                    x_min = max(0, int(x_min) - 20)
+                    y_min = max(0, int(y_min) - 20)
+                    x_max = min(w, int(x_max) + 20)
+                    y_max = min(h, int(y_max) + 20)
 
-                    self.frame_queue.put(scaled_landmarks)
+                    cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (255, 255, 255), 2)
+
+                    if not self.frame_queue.full():
+                        normalized_landmarks = self._normalize_landmarks(hand_landmarks.landmark)
+                        scaled_landmarks = self._scale_landmarks(normalized_landmarks)
+
+                        self.frame_queue.put(scaled_landmarks)
 
             cv2.imshow('Gesture Detection', frame)
             if cv2.waitKey(1) & 0xFF == 27:  # ESC to exit
