@@ -1,0 +1,10 @@
+numpy~=1.26.4
+mediapipe~=0.10.20
+spotipy~=2.25.0
+python-dotenv~=1.0.1
+opencv-python~=4.11.0.86
+joblib~=1.4.2
+matplotlib~=3.9.4
+scikit-learn~=1.6.1
+pandas~=2.2.3
+seaborn~=0.13.2

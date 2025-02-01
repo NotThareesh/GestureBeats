@@ -130,7 +130,7 @@ class DetectionClass:
     def _capture_video(self):
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6)
-        cap = cv2.VideoCapture(1)  # Change it to 0 or 1 depending upon your computer's camera input
+        cap = cv2.VideoCapture(0)  # Change it to 0 or 1 depending upon your computer's camera input
 
         while cap.isOpened():
             ret, frame = cap.read()
