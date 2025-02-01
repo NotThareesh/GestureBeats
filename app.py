@@ -9,12 +9,13 @@ import time
 from dotenv import load_dotenv
 import os
 
-# Custom labels for the model
+# All Custom Labels that the Model can recognize
 labels = ['R OK', 'L OK', 'R Pointer', 'L Pointer', 'Left Seek', 'Right Seek', 'Rock and Roll', 'Open Hand']
 
 
 class DetectionClass:
     def __init__(self):
+        # Load all the models
         self.model = joblib.load('gesture_model.pkl')
         self.scaler = joblib.load('gesture_scaler.pkl')
 
@@ -58,6 +59,7 @@ class DetectionClass:
 
         print("Spotify Authenticated Successfully!")
 
+    # Check if any playback device is active
     def _is_device_active(self):
         devices = self.sp.devices()
 
@@ -86,11 +88,16 @@ class DetectionClass:
         else:
             self.sp.start_playback()
 
+    def _seek_timing(self):
+        pass
+
+    # Normalising all landmarks w.r.t the position of the first hand landmark
     def _normalize_landmarks(self, landmarks):
         base_x, base_y, base_z = landmarks[0].x, landmarks[0].y, landmarks[0].z
         normalized = np.array([[lm.x - base_x, lm.y - base_y, lm.z - base_z] for lm in landmarks])
         return normalized.flatten()
 
+    # Using the custom scaler to scale all the values
     def _scale_landmarks(self, normalized_landmarks):
         scaled_landmarks = self.scaler.transform([normalized_landmarks])
         return scaled_landmarks.flatten()
@@ -99,6 +106,7 @@ class DetectionClass:
         y_pred_new = self.model.predict_proba([scaled_landmarks.tolist()])
         max_pred = y_pred_new[0][np.argmax(y_pred_new)]
 
+        # Accuracy Threshold is 96%
         if max_pred > 0.96 and np.argmax(y_pred_new) != 7:
             print("Predictions for new data: ", labels[np.argmax(y_pred_new)])
             print("Total Predictions: ", y_pred_new[0])
@@ -108,6 +116,8 @@ class DetectionClass:
             if self._is_valid_action():
                 if gesture in (0, 1):
                     self._toggle_playback()
+                elif gesture in (2, 3):
+                    self._seek_timing()
                 elif gesture == 4:
                     self.sp.previous_track()
                 elif gesture == 5:
@@ -120,7 +130,7 @@ class DetectionClass:
     def _capture_video(self):
         mp_hands = mp.solutions.hands
         hands = mp_hands.Hands(static_image_mode=False, max_num_hands=1, min_detection_confidence=0.6)
-        cap = cv2.VideoCapture(1)
+        cap = cv2.VideoCapture(1)  # Change it to 0 or 1 depending upon your computer's camera input
 
         while cap.isOpened():
             ret, frame = cap.read()
@@ -155,6 +165,7 @@ class DetectionClass:
                 scaled_landmarks = self.frame_queue.get()
                 self._process_frame(scaled_landmarks)
 
+    # Multiprocessing
     def start(self):
         processing_thread = multiprocessing.Process(target=self._processing_thread)
         processing_thread.daemon = True
